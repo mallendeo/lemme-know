@@ -13,8 +13,11 @@ if (!BOT_TOKEN || !CHAT_ID) {
   throw Error('BOT_TOKEN and CHAT_ID are required')
 }
 
+moment.tz.setDefault('America/Santiago')
+
 const bot = new Telegraf(BOT_TOKEN)
 const send = (...args) => bot.telegram.sendMessage(CHAT_ID, ...args)
+const toCLP = num => num.toLocaleString('es-CL', { style: 'currency', currency: 'CLP' })
 
 const editPinMsg = msg => bot.telegram.editMessageText(
   CHAT_ID,
@@ -84,8 +87,14 @@ const checkPrices = () => {
         
         if (prevPrice) {
           const delta = Math.abs(1 - lowestPrice / prevPrice)
-          if (delta >= 0.5) {
-            send(`${url} | then: ${prevPrice} | now: ${lowestPrice} | ${delta * 100}%`)
+          if (delta >= 0.5 && lowestPrice < prevPrice) {
+            send(
+              `${url}\n` +
+              `Then: ${toCLP(prevPrice)}\n` +
+              `Now: ${toCLP(lowestPrice)}\n` +
+              `Delta: ${Math.round(delta * 10000) / 100}%`,
+              'Markdown'
+            )
           }
         }
   

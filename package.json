@@ -10,6 +10,7 @@
     "lodash": "^4.17.10",
     "lowdb": "^1.0.0",
     "moment": "^2.22.2",
+    "moment-timezone": "^0.5.21",
     "telegraf": "^3.22.1"
   }
 }
