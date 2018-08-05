@@ -1,6 +1,5 @@
-'use strict'
-
-const axios = require('axios')
+import axios from 'axios'
+import { getAll, toNum } from '../helpers'
 
 const HOST = 'https://www.falabella.com'
 const API_URL = `${HOST}/rest/model/falabella/rest/browse/BrowseActor`
@@ -36,7 +35,7 @@ const makeUrl = (page = 1, filters) => {
   return `${API_URL}/get-product-record-list?${paramsStr}`
 }
 
-const getProducts = async (page, filters, retry = 0) => {
+export const getProducts = async (page, filters, retry = 0) => {
   const url = makeUrl(page, filters)
 
   try {
@@ -49,8 +48,30 @@ const getProducts = async (page, filters, retry = 0) => {
 
     // curentPage is actually a Falabella's typo
     const { resultList, pagesTotal, curentPage } = data.state
+
+    const list = resultList.map(prod => {
+      const url = HOST + prod.url
+
+      const prices = prod.prices.map(price =>
+        Math.min(...[
+          price.originalPrice,
+          price.formattedLowestPrice,
+          price.formattedHighestPrice
+        ]
+          .filter(p => typeof p !== 'undefined')
+          .map(toNum)
+        )
+      )
+
+      return {
+        url,
+        price: Math.min(...prices),
+        id: prod.productId
+      }
+    })
+
     return {
-      list: resultList,
+      list,
       currPage: curentPage,
       totalPages: pagesTotal
     }
@@ -65,15 +86,4 @@ const getProducts = async (page, filters, retry = 0) => {
   }
 }
 
-const getAllProducts = async (page = 1, filters, cb, onEnd) => {
-  const { list, totalPages, currPage } = await getProducts(page, filters)
-  cb && cb(list, { totalPages, currPage })
-  if (currPage >= totalPages) return onEnd && onEnd()
-  return getAllProducts(currPage + 1, filters, cb, onEnd)
-}
-
-module.exports = {
-  getProducts,
-  getAllProducts,
-  HOST
-}
+export const getAllProducts = getAll(getProducts)
