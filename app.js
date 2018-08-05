@@ -6,7 +6,7 @@ const throttle = require('lodash/throttle')
 const Telegraf = require('telegraf')
 
 const db = require('./db')
-const { getAllProducts, HOST } = require('./bot')
+const falabella = require('./bots/falabella')
 
 const { BOT_TOKEN, CHAT_ID } = process.env
 if (!BOT_TOKEN || !CHAT_ID) {
@@ -71,19 +71,21 @@ const notify = throttle(props => {
 const checkPrices = () => {
   db.update('runCount', n => n + 1).write()
   
-  getAllProducts(1, ['lowprice'], (list, { totalPages, currPage }) => {
+  falabella.getAllProducts(1, ['lowprice'], (list, { totalPages, currPage }) => {
     notify({ currPage, totalPages })
 
     list.forEach(prod => {
-      const url = HOST + prod.url
+      const url = falabella.HOST + prod.url
       prod.prices.forEach(price => {
         const key = `${prod.productId}:${price.type}`
         const prevPrice = db.get(`prices.${key}`).value()
-        const lowestPrice = price.originalPrice
-          ? toNum(price.originalPrice)
-          : price.formattedLowestPrice
-            ? toNum(price.formattedLowestPrice)
-            : toNum(price.formattedHighestPrice)
+        const prices = [
+          price.originalPrice,
+          price.formattedLowestPrice,
+          price.formattedHighestPrice
+        ].filter(p => typeof p !== 'undefined').map(toNum)
+
+        const lowestPrice = Math.min(...prices)
         
         if (prevPrice) {
           const delta = Math.abs(1 - lowestPrice / prevPrice)
