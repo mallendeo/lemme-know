@@ -1,0 +1,130 @@
+'use strict'
+
+const cron = require('cron')
+const moment = require('moment')
+const throttle = require('lodash/throttle')
+const Telegraf = require('telegraf')
+
+const db = require('./db')
+const { getAllProducts, HOST } = require('./bot')
+
+const { BOT_TOKEN, CHAT_ID } = process.env
+if (!BOT_TOKEN || !CHAT_ID) {
+  throw Error('BOT_TOKEN and CHAT_ID are required')
+}
+
+const bot = new Telegraf(BOT_TOKEN)
+const send = (...args) => bot.telegram.sendMessage(CHAT_ID, ...args)
+
+const editPinMsg = msg => bot.telegram.editMessageText(
+  CHAT_ID,
+  db.get('pinnedMsg').value(),
+  null,
+  msg,
+  { parse_mode: 'Markdown' }
+)
+
+bot.help(async ctx => {
+  const { message } = ctx.update
+  const reply = await ctx.replyWithMarkdown(`\`\`\`
+Message ID: ${message.message_id}
+Chat ID: ${message.chat.id}
+From: ${JSON.stringify(message.from, null, 2)}
+\`\`\``)
+  ctx.replyWithMarkdown(`\`\`\`
+Previous reply ID: ${reply.message_id}
+Bot data: ${JSON.stringify(reply.from, null, 2)}
+\`\`\``)
+})
+
+bot.hears(/\/setpin/, async ctx => {
+  const msg = await send('Bot status')
+  db.set('pinnedMsg', msg.message_id).write()
+  bot.telegram.pinChatMessage(msg.chat.id, msg.message_id)
+  ctx.reply(`Pin set`)
+})
+
+bot.startPolling()
+
+send('Starting bot...')
+
+const toNum = price => Number(price.replace(/\./g, ''))
+
+const notify = throttle(props => {
+  const { done, currPage, totalPages } = props
+  const runs = db.get('runCount').value()
+  if (done) {
+    const lastRun = db.get('lastRun').value()
+    editPinMsg(`Run ${runs} done!
+
+\`${moment(lastRun).format('HH:mm DD/MM/YYYY')}\``)
+    return
+  }
+
+  const progress = `Page ${currPage} of ${totalPages}`
+  editPinMsg(`Run #${runs}: ${progress}`)
+}, 5000)
+
+const checkPrices = () => {
+  db.update('runCount', n => n + 1).write()
+  
+  getAllProducts(1, ['lowprice'], (list, { totalPages, currPage }) => {
+    notify({ currPage, totalPages })
+
+    list.forEach(prod => {
+      const url = HOST + prod.url
+      prod.prices.forEach(price => {
+        const key = `${prod.productId}:${price.type}`
+        const prevPrice = db.get(`prices.${key}`).value()
+        const lowestPrice = price.originalPrice
+          ? toNum(price.originalPrice)
+          : price.formattedLowestPrice
+            ? toNum(price.formattedLowestPrice)
+            : toNum(price.formattedHighestPrice)
+        
+        if (prevPrice) {
+          const delta = Math.abs(1 - lowestPrice / prevPrice)
+          if (delta >= 0.5) {
+            send(`${url} | then: ${prevPrice} | now: ${lowestPrice} | ${delta * 100}%`)
+          }
+        }
+  
+        db.set(`prices.${key}`, lowestPrice).value()
+      })
+    })
+
+    db.write()
+  }, () => {
+    // done
+    db.set('lastRun', Date.now()).write()
+    notify({ done: true })
+  })
+}
+
+new cron.CronJob({
+  cronTime: '*/30 * * * *',
+  onTick: checkPrices,
+  start: true,
+  runOnInit: true
+})
+
+process.stdin.resume()
+
+const exitHandler = async err => {
+  try {
+    db.write()
+    await send(`Bot crashed: ${err.message}`)
+  } catch (e) {
+    console.error(e.stack)
+    console.error(err.stack)
+  } finally {
+    if (err) console.error(err.stack)
+    process.exit()
+  }
+}
+
+process.on('exit', exitHandler)
+process.on('SIGINT', exitHandler)
+process.on('SIGUSR1', exitHandler)
+process.on('SIGUSR2', exitHandler)
+process.on('uncaughtException', exitHandler)
