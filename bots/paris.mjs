@@ -5,11 +5,14 @@ import { getAll } from '../helpers'
 const HOST = 'https://www.paris.cl'
 const API_URL = `${HOST}/store-api/pyload/_search`
 
-export const getProducts = async (page = 1, filters, qty = 32) => {
+// FIXME:
+// paris.cl will throw a 500 error after the 10000th item
+// possible workaround is to filter products by category
+export const getProducts = async (page = 1, filters, qty = 100) => {
   const body = _.set(
     { size: qty, from: (page - 1) * qty },
     'query.function_score.query.bool.must[0].range.price',
-    { gte: '50001', lte: null }
+    { gte: '150000' }
   )
 
   const { data: { hits: { total, hits } } } = await axios.post(API_URL, body)

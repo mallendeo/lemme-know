@@ -4,7 +4,7 @@ import { getAll, toNum } from '../helpers'
 const HOST = 'https://www.falabella.com'
 const API_URL = `${HOST}/rest/model/falabella/rest/browse/BrowseActor`
 
-const makeUrl = (page = 1, filters) => {
+const makeUrl = (page = 1, filters = []) => {
   const priceMap = {
     50: '277mZ',
     100: '27cuZ',

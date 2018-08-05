@@ -43,7 +43,7 @@ const checkPrices = () => {
     db.update(`${bot}.runCount`, n => n + 1)
     saveDb()
 
-    bots[bot].getAllProducts(1, ['lowprice'], (list, { totalPages, currPage }) => {
+    bots[bot].getAllProducts(1, undefined, (list, { totalPages, currPage }) => {
       state[bot].totalPages = totalPages
       state[bot].currPage = currPage
       notify()
