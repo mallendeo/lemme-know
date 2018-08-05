@@ -5,7 +5,7 @@ import throttle from 'lodash/throttle'
 import db from './db'
 import bots from './bots'
 import { editPinMsg, send } from './tg'
-import { toCLP } from './helpers'
+import { toCLP, capitalize } from './helpers'
 
 const state = Object.keys(bots).reduce((obj, bot) => {
   obj[bot] = { done: false, currPage: 0, totalPages: 0 }
@@ -18,7 +18,7 @@ const notify = throttle(() => {
   const msg = Object.keys(bots).map(bot => {
     const { done, currPage, totalPages } = state[bot]
     const runs = db.get(`${bot}.runCount`).value()
-    const name = bot.replace(/^\w/, c => c.toUpperCase())
+    const name = capitalize(bot)
 
     if (done) {
       const lastRun = db.get(`${bot}.lastRun`).value()

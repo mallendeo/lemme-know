@@ -14,3 +14,5 @@ export const getAll = fn => {
 
   return next
 }
+
+export const capitalize = str => str.replace(/^\w/, c => c.toUpperCase())
