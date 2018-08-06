@@ -1,55 +1,36 @@
 import axios from 'axios'
-import { getAll, toNum } from '../helpers'
+import { toNum } from '../helpers'
 
 const HOST = 'https://www.falabella.com'
 const API_URL = `${HOST}/rest/model/falabella/rest/browse/BrowseActor`
 
-const makeUrl = (page = 1, filters = []) => {
-  const priceMap = {
-    50: '277mZ',
-    100: '27cuZ',
-    200: '27cvZ',
-    350: '27cwZ',
-    500: '277oZ',
-    1000: '27cx'
-  }
+export const CATEG_MAPPING = {
+  electro: '1z0ztpy',
+  home: '1z141va',
+  beds: '1z0wutu'
+}
 
-  const categMap = {
-    electro: 'Z1z0ztpy'
-  }
-
-  const prices = (filters.indexOf('lowprice') > -1
-   ? Object.values(priceMap)
-   : Object.values(priceMap).slice(1)
-  ).join('')
-
-  const categories = filters.map(filter => (categMap[filter] || '')).join('')
-
+export const getProducts = async (page, category) => {
   const params = {
     currentPage: page,
-    navState: `/search/N-${prices + categories}`
+    navState: `/search/N-${CATEG_MAPPING[category]}`
   }
 
   const paramsStr = encodeURIComponent(JSON.stringify(params))
+  const url = `${API_URL}/get-product-record-list?${paramsStr}`
 
-  return `${API_URL}/get-product-record-list?${paramsStr}`
-}
+  const { data } = await axios(url, {
+    headers: {
+      'content-type': 'application/json'
+    }
+  })
 
-export const getProducts = async (page, filters, retry = 0) => {
-  const url = makeUrl(page, filters)
+  // curentPage is actually a Falabella's typo
+  const { resultList, pagesTotal, curentPage } = data.state
 
-  try {
-    const { data } = await axios(url, {
-      headers: {
-        'cache-control': 'no-cache',
-        'content-type': 'application/json'
-      }
-    })
-
-    // curentPage is actually a Falabella's typo
-    const { resultList, pagesTotal, curentPage } = data.state
-
-    const list = resultList.map(prod => {
+  const list = resultList
+    .filter(prod => prod.isCCAvailable || prod.isHDAvailable)
+    .map(prod => {
       const url = HOST + prod.url
 
       const prices = prod.prices.map(price =>
@@ -70,20 +51,9 @@ export const getProducts = async (page, filters, retry = 0) => {
       }
     })
 
-    return {
-      list,
-      currPage: curentPage,
-      totalPages: pagesTotal
-    }
-  } catch (e) {
-    if (retry > 2) {
-      console.error(e)
-      return
-    }
-    
-    console.log(e, 'Retrying...')
-    return getProducts(page, filters, retry + 1)
+  return {
+    list,
+    currPage: curentPage,
+    totalPages: pagesTotal
   }
 }
-
-export const getAllProducts = getAll(getProducts)

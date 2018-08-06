@@ -5,7 +5,7 @@ import throttle from 'lodash/throttle'
 import db from './db'
 import bots from './bots'
 import { editPinMsg, send } from './tg'
-import { toCLP, capitalize } from './helpers'
+import { toCLP, capitalize, wait } from './helpers'
 
 const state = Object.keys(bots).reduce((obj, bot) => {
   obj[bot] = { done: false, currPage: 0, totalPages: 0 }
@@ -31,8 +31,13 @@ const notify = throttle(() => {
       )
     }
 
-    const progress = `page ${currPage} of ${totalPages}`
-    return `*${name}*: #${runs}, ${progress}`
+    const { categories } = bots[bot]
+    const categ = state[bot].currCategory
+    const cProg = `${categories.indexOf(categ) + 1}/${categories.length}`
+    const prog = `**${capitalize(categ)} (${cProg})**:`
+      + ` page ${currPage} of ${totalPages}`
+
+    return `*${name}*: #${runs}, ${prog}`
   }).join('\n\n')
 
   editPinMsg(msg)
@@ -41,27 +46,29 @@ const notify = throttle(() => {
 const saveDb = throttle(() => db.write(), 1000)
 
 const checkPrices = () => {
-  Object.keys(bots).forEach(bot => {
+  Object.keys(bots).forEach(async bot => {
     db.update(`${bot}.runCount`, n => n + 1)
     saveDb()
+    console.log(bots[bot].categories)
 
-    bots[bot].getAllProducts(1, undefined, (list, { totalPages, currPage }) => {
-      state[bot].totalPages = totalPages
-      state[bot].currPage = currPage
+    const gotProdsCb = (list, nav) => {
+      state[bot].done = false
+      state[bot].totalPages = nav.totalPages
+      state[bot].currPage = nav.currPage
       notify()
 
       list.forEach(prod => {
         const prevPrice = db.get(`${bot}.prices.${prod.id}`).value()
         if (prevPrice) {
           const delta = Math.abs(1 - prod.price / prevPrice)
+
           if (delta >= 0.5 && prod.price < prevPrice) {
-            send(
-              `${url}\n` +
+            const msg = `${url}\n` +
               `Then: ${toCLP(prevPrice)}\n` +
               `Now: ${toCLP(prod.price)}\n` +
-              `Delta: ${Math.round(delta * 10000) / 100}%`,
-              'Markdown'
-            )
+              `Delta: ${Math.round(delta * 10000) / 100}%`
+
+            send(msg, 'Markdown')
           }
         }
   
@@ -69,11 +76,17 @@ const checkPrices = () => {
       })
   
       saveDb()
-    }, () => {
+    }
+
+    for (const categ of bots[bot].categories) {
+      state[bot].currCategory = categ
+
+      await bots[bot].getAllProducts(1, categ, gotProdsCb)
+
       db.set(`${bot}.lastRun`, Date.now()).write()
       state[bot].done = true
       notify()
-    })
+    }
   })
 }
 
@@ -89,7 +102,8 @@ process.stdin.resume()
 const exitHandler = async err => {
   try {
     db.write()
-    await send(`Bot crashed: ${err.message}`)
+    send(`Bot crashed${err.message ? `: ${err.message}` : ''}`)
+    await wait()
   } catch (e) {
     console.error(e.stack)
     console.error(err.stack)
