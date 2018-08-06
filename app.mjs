@@ -7,7 +7,12 @@ import { editPinMsg, send, bot as tgBot } from './tg'
 import { toCLP, capitalize, wait } from './helpers'
 
 const state = Object.keys(bots).reduce((obj, bot) => {
-  obj[bot] = { done: false, currPage: 0, totalPages: 0 }
+  obj[bot] = {
+    done: false,
+    currPage: 0,
+    totalPages: 0,
+    totalProducts: 0
+  }
   return obj
 }, { timeout: null })
 
@@ -26,7 +31,8 @@ const createStatusMsg = () =>
 
       return ( 
         `*${name}*: run ${runs} done!\n` +
-        `\`${moment(lastRun).format('HH:mm DD/MM/YYYY')}\``
+        `*Total products*: ${state[bot].totalProducts}\n` +
+        `*Finished*: \`${moment(lastRun).format('HH:mm DD/MM/YYYY')}\``
       )
     }
 
@@ -60,6 +66,8 @@ const checkPrices = () => {
       notify()
 
       list.forEach(prod => {
+        state[bot].totalProducts += 1
+
         const prevPrice = db.get(`${bot}.prices.${prod.id}`).value()
         if (prevPrice) {
           const delta = Math.abs(1 - prod.price / prevPrice)
@@ -70,7 +78,6 @@ const checkPrices = () => {
               `Then: ${toCLP(prevPrice)}\n` +
               `Now: ${toCLP(prod.price)}\n` +
               `Delta: ${Math.round(delta * 10000) / 100}%`
-            console.log(msg)
 
             send(msg, 'Markdown')
           }
@@ -84,6 +91,7 @@ const checkPrices = () => {
       return state.run
     }
 
+    state[bot].totalProducts = 0
     for (const categ of bots[bot].categories) {
       state[bot].currCategory = categ
 
