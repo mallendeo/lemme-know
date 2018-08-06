@@ -14,6 +14,8 @@ const state = Object.keys(bots).reduce((obj, bot) => {
 
 moment.tz.setDefault('America/Santiago')
 
+send('Starting bot...', null, null, true)
+
 const notify = throttle(() => {
   const msg = Object.keys(bots).map(bot => {
     const { done, currPage, totalPages } = state[bot]
