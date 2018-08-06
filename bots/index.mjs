@@ -14,7 +14,7 @@ const wrapper = bot => {
     return bot.getProducts(page, category)
   }
 
-  const getAllProducts = () => (...args) =>
+  const getAllProducts = (...args) =>
     new Promise((resolve, reject) => {
       let retry = 0
       const next = async (page = 1, categ, cb) => {
@@ -47,7 +47,7 @@ const wrapper = bot => {
   return {
     ...bot,
     categories: Object.keys(bot.CATEG_MAPPING),
-    getAllProducts: getAllProducts(),
+    getAllProducts,
     getProducts
   }
 }

@@ -47,9 +47,7 @@ const saveDb = throttle(() => db.write(), 1000)
 
 const checkPrices = () => {
   Object.keys(bots).forEach(async bot => {
-    db.update(`${bot}.runCount`, n => n + 1)
-    saveDb()
-    console.log(bots[bot].categories)
+    db.update(`${bot}.runCount`, n => n + 1).write()
 
     const gotProdsCb = (list, nav) => {
       state[bot].done = false
