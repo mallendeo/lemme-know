@@ -12,7 +12,9 @@ const botsConfig = Object.keys(bots).reduce((obj, bot) => {
 
 db.defaults({
   ...botsConfig,
-  pinnedMsg: process.env.PINNED_MSG
+  pinnedMsg: process.env.PINNED_MSG,
+  delta: 0.5,
+  timeout: 30 * 60 * 1000
 }).write()
 
 export default db

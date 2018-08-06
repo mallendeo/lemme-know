@@ -22,7 +22,11 @@ const wrapper = bot => {
 
         try {
           const { list, totalPages, currPage } = await getProducts(page, categ)
-          cb && cb(list, { totalPages, currPage })
+
+          if (typeof cb !== 'undefined') {
+            const run = cb(list, { totalPages, currPage })
+            if (!run) return resolve()
+          }
     
           if (currPage >= totalPages) return resolve()
 

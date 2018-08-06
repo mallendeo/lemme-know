@@ -38,4 +38,23 @@ bot.hears(/\/setpin/, async ctx => {
   ctx.reply(`Pin set`)
 })
 
+bot.hears(/\/settimeout (\d+)/, async ctx => {
+  const num = Number(ctx.match[1])
+  if (num < 5) {
+    ctx.reply(`Must be greater than 5 minutes`)
+    return
+  }
+
+  const ms = Number(num) * 1000 * 60
+  db.set('timeout', ms).write()
+  ctx.reply(`Timeout set to ${num} minutes (${ms} ms)`)
+})
+
+bot.hears(/\/setdelta (.+)/, async ctx => {
+  const num = Number(ctx.match[1])
+  const delta = Math.round(num * 100) / 10000
+  db.set('delta', delta).write()
+  ctx.reply(`Delta set to ${delta} (${num}%)`)
+})
+
 bot.startPolling()
