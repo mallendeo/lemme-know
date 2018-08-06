@@ -26,7 +26,7 @@ export const getProducts = async (page, category) => {
   })
 
   // curentPage is actually a Falabella's typo
-  const { resultList, pagesTotal, curentPage } = data.state
+  const { resultList = [], pagesTotal, curentPage } = data.state
 
   const list = resultList
     .filter(prod => prod.isCCAvailable || prod.isHDAvailable)
