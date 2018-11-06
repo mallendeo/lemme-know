@@ -6,6 +6,8 @@ import bots from './bots'
 import { editPinMsg, send, bot as tgBot } from './tg'
 import { toCLP, capitalize, wait } from './helpers'
 
+console.log('node version', process.version)
+
 const state = Object.keys(bots).reduce(
   (obj, bot) => {
     obj[bot] = {
