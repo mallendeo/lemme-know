@@ -6,50 +6,55 @@ import bots from './bots'
 import { editPinMsg, send, bot as tgBot } from './tg'
 import { toCLP, capitalize, wait } from './helpers'
 
-const state = Object.keys(bots).reduce((obj, bot) => {
-  obj[bot] = {
-    done: false,
-    currPage: 0,
-    totalPages: 0,
-    totalProducts: 0
-  }
-  return obj
-}, { timeout: null })
+const state = Object.keys(bots).reduce(
+  (obj, bot) => {
+    obj[bot] = {
+      done: false,
+      currPage: 0,
+      totalPages: 0,
+      totalProducts: 0
+    }
+    return obj
+  },
+  { timeout: null }
+)
 
 moment.tz.setDefault('America/Santiago')
 
 send('Starting bot...', null, null, true)
 
 const createStatusMsg = () =>
-  Object.keys(bots).map(bot => {
-    const { done, currPage, totalPages } = state[bot]
-    const runs = db.get(`${bot}.runCount`).value()
-    const name = capitalize(bot)
+  Object.keys(bots)
+    .map(bot => {
+      const { done, currPage, totalPages } = state[bot]
+      const runs = db.get(`${bot}.runCount`).value()
+      const name = capitalize(bot)
 
-    if (done) {
-      const lastRun = db.get(`${bot}.lastRun`).value()
+      if (done) {
+        const lastRun = db.get(`${bot}.lastRun`).value()
 
-      return ( 
-        `*${name}*: run ${runs} done!\n` +
-        `*Total products*: ${state[bot].totalProducts}\n` +
-        `*Finished*: \`${moment(lastRun).format('HH:mm DD/MM/YYYY')}\``
-      )
-    }
+        return (
+          `*${name}*: run ${runs} done!\n` +
+          `*Total products*: ${state[bot].totalProducts}\n` +
+          `*Finished*: \`${moment(lastRun).format('HH:mm DD/MM/YYYY')}\``
+        )
+      }
 
-    const { categories } = bots[bot]
-    const categ = state[bot].currCategory
-    if (categ) {
-      const cProg = `${categories.indexOf(categ) + 1}/${categories.length}`
-      const prog = `**${capitalize(categ)} (${cProg})**:`
-        + ` page ${currPage} of ${totalPages}`
-  
-      return `*${name}*: #${runs}, ${prog}`
-    }
-  }).join('\n\n')
+      const { categories } = bots[bot]
+      const categ = state[bot].currCategory
+      if (categ) {
+        const cProg = `${categories.indexOf(categ) + 1}/${categories.length}`
+        const prog =
+          `**${capitalize(categ)} (${cProg})**:` +
+          ` page ${currPage} of ${totalPages}`
+
+        return `*${name}*: #${runs}, ${prog}`
+      }
+    })
+    .join('\n\n')
 
 const notify = throttle(() => {
-  editPinMsg(createStatusMsg())
-    .catch(err => console.error(err.message))
+  editPinMsg(createStatusMsg()).catch(err => console.error(err.message))
 }, 5000)
 
 const saveDb = throttle(() => db.write(), 1000)
@@ -74,7 +79,8 @@ const checkPrices = () => {
           const trigger = db.get('delta').value() || 0.5
 
           if (delta >= trigger && prod.price < prevPrice) {
-            const msg = `${prod.url}\n` +
+            const msg =
+              `${prod.url}\n` +
               `Then: ${toCLP(prevPrice)}\n` +
               `Now: ${toCLP(prod.price)}\n` +
               `Delta: ${Math.round(delta * 10000) / 100}%`
@@ -82,10 +88,10 @@ const checkPrices = () => {
             send(msg, 'Markdown')
           }
         }
-  
+
         db.set(`${bot}.prices.${prod.id}`, prod.price).value()
       })
-  
+
       saveDb()
 
       return state.run
@@ -95,7 +101,7 @@ const checkPrices = () => {
     for (const categ of bots[bot].categories) {
       state[bot].currCategory = categ
 
-      state.run && await bots[bot].getAllProducts(1, categ, gotProdsCb)
+      state.run && (await bots[bot].getAllProducts(1, categ, gotProdsCb))
 
       db.set(`${bot}.lastRun`, Date.now()).write()
       state[bot].running = false

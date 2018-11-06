@@ -8,15 +8,24 @@ if (!BOT_TOKEN || !CHAT_ID) {
 
 export const bot = new Telegraf(BOT_TOKEN)
 
+// Admin middleware
+bot.use((ctx, next) => {
+  const { message } = ctx
+  if (message.from.id === 13396245) {
+    return next(ctx)
+  }
+})
+
 export const send = (...args) => bot.telegram.sendMessage(CHAT_ID, ...args)
 
-export const editPinMsg = msg => bot.telegram.editMessageText(
-  CHAT_ID,
-  db.get('pinnedMsg').value(),
-  null,
-  msg,
-  { parse_mode: 'Markdown' }
-)
+export const editPinMsg = msg =>
+  bot.telegram.editMessageText(
+    CHAT_ID,
+    db.get('pinnedMsg').value(),
+    null,
+    msg,
+    { parse_mode: 'Markdown' }
+  )
 
 bot.help(async ctx => {
   const { message } = ctx.update
