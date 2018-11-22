@@ -11,8 +11,13 @@ export const bot = new Telegraf(BOT_TOKEN)
 // Admin middleware
 bot.use((ctx, next) => {
   const { message } = ctx
-  if (message.from.id === 13396245) {
-    return next(ctx)
+  if (message) {
+    const help = message.text === '/help'
+    const isAdmin = message.from.id === Number(process.env.ADMIN_ID)
+
+    if (help || isAdmin) {
+      return next(ctx)
+    }
   }
 })
 
